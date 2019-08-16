@@ -1006,11 +1006,19 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   address public oracleAddress_CertusOne = 	"0xA3Ce768F041d136E8d57fD24372E5fB510b797ec";
   address public oracleAddress_Chainlayer =	"0x6e6f16b7c0a00a2ac1136b3ae3e4641f1faf8d7f";
   address public oracleAddress_Fiews = 	"0x1948C20CC492539968BB9b041F96D6556B4b7001";
-  address public oracleAddress_honeycomb.market =	"0x4a3fbbb385b5efeb4bc84a25aaadcd644bd09721";
-  address public oracleAddress_LinkForest.io = 	"	0x4105d850E9Aea215f9350C9E46Bb73FC0448C20a";
+  address public oracleAddress_honeycombMarket =	"0x4a3fbbb385b5efeb4bc84a25aaadcd644bd09721";
+  address public oracleAddress_LinkForestIo = 	"	0x4105d850E9Aea215f9350C9E46Bb73FC0448C20a";
   address public oracleAddress_LinkPool = "	0x83F00b902cbf06E316C95F51cbEeD9D2572a349a";
   address public oracleAddress_SecureDataLinks = 	"	0xa0BfFBdf2c440D6c76af13c30d9B320F9d2DeA6A";
-
+  
+  string public jobID_CertusOne = "9e1a18406f99431a816059272738a633";
+  string public jobID_Chainlayer = "1a7c545910574ecfa98266c8c33a7228";
+  string public jobID_Chainlink = "be4c8c82435c41a8a5aef6e6f98f0fe9";
+  string public jobID_Fiews = "d0a996e4accd4796a2bcc418a6056012";
+  string public jobID_honeycombMarket = "95b18d82fc914520848713beb5512ddd";
+  string public jobID_LinkForestIo = "02cc13d61ca840cbbc2225f341db6c37";
+  string public jobID_LinkPool = "7e94057a9b4041bba0e2406398df8593";
+  string public jobID_SecureDataLinks = "a0ea97f6bc19480fa069f7ca8e4c5ee7";
   
 
   event RequestEthereumPriceFulfilled(
