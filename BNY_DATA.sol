@@ -1000,8 +1000,7 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   uint256 constant private ORACLE_PAYMENT = 1 * LINK; // solium-disable-line zeppelin/no-arithmetic-operations
 
   uint256 public currentPrice;
-  uint256 public maxPrice;
-  uint256 public minPrice;
+  
 
   event RequestEthereumPriceFulfilled(
     bytes32 indexed requestId,
