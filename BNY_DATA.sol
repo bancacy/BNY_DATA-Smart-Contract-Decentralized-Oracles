@@ -1031,21 +1031,7 @@ contract BNY_DATA is ChainlinkClient, Ownable {
     req.add("path", "lastPrice");
     req.addInt("times", 1000000000);
     sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
-
-    req = buildChainlinkRequest(stringToBytes32(_jobId), this, this.fulfillEthereumPriceMax.selector);
-    req.add("url", "https://api.binance.com/api/v1/ticker/24hr?symbol=BNBBTC");
-    req.add("path", "highPrice");
-    req.addInt("times", 1000000000);
-    sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
-
-    req = buildChainlinkRequest(stringToBytes32(_jobId), this, this.fulfillEthereumPriceMin.selector);
-    req.add("url", "https://api.binance.com/api/v1/ticker/24hr?symbol=BNBBTC");
-    req.add("path", "lowPrice");
-    req.addInt("times", 1000000000);
-    sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
   }
-  
-
   
 
   function fulfillEthereumPrice(bytes32 _requestId, uint256 _price)
@@ -1054,22 +1040,6 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   {
     emit RequestEthereumPriceFulfilled(_requestId, _price);
     currentPrice = _price;
-  }
-
-  function fulfillEthereumPriceMax(bytes32 _requestId, uint256 _price)
-    public
-    recordChainlinkFulfillment(_requestId)
-  {
-    emit RequestEthereumPriceFulfilled(_requestId, _price);
-    maxPrice = _price;
-  }
-
-  function fulfillEthereumPriceMin(bytes32 _requestId, uint256 _price)
-    public
-    recordChainlinkFulfillment(_requestId)
-  {
-    emit RequestEthereumPriceFulfilled(_requestId, _price);
-    minPrice = _price;
   }
 
   
