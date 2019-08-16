@@ -1002,14 +1002,14 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   uint256 public currentPrice;
 
 
-  address public oracleAddress_Chainlink = 	"0xc99B3D447826532722E41bc36e644ba3479E4365";
-  address public oracleAddress_CertusOne = 	"0xA3Ce768F041d136E8d57fD24372E5fB510b797ec";
-  address public oracleAddress_Chainlayer =	"0x6e6f16b7c0a00a2ac1136b3ae3e4641f1faf8d7f";
-  address public oracleAddress_Fiews = 	"0x1948C20CC492539968BB9b041F96D6556B4b7001";
-  address public oracleAddress_honeycombMarket =	"0x4a3fbbb385b5efeb4bc84a25aaadcd644bd09721";
-  address public oracleAddress_LinkForestIo = 	"	0x4105d850E9Aea215f9350C9E46Bb73FC0448C20a";
-  address public oracleAddress_LinkPool = "	0x83F00b902cbf06E316C95F51cbEeD9D2572a349a";
-  address public oracleAddress_SecureDataLinks = 	"	0xa0BfFBdf2c440D6c76af13c30d9B320F9d2DeA6A";
+  address public oracleAddress_Chainlink = 	0xc99B3D447826532722E41bc36e644ba3479E4365;
+  address public oracleAddress_CertusOne = 	0xA3Ce768F041d136E8d57fD24372E5fB510b797ec;
+  address public oracleAddress_Chainlayer =	0x6e6f16b7c0a00a2ac1136b3ae3e4641f1faf8d7f;
+  address public oracleAddress_Fiews = 	0x1948C20CC492539968BB9b041F96D6556B4b7001;
+  address public oracleAddress_honeycombMarket =	0x4a3fbbb385b5efeb4bc84a25aaadcd644bd09721;
+  address public oracleAddress_LinkForestIo = 	0x4105d850E9Aea215f9350C9E46Bb73FC0448C20a;
+  address public oracleAddress_LinkPool = 0x83F00b902cbf06E316C95F51cbEeD9D2572a349a;
+  address public oracleAddress_SecureDataLinks = 	0xa0BfFBdf2c440D6c76af13c30d9B320F9d2DeA6A;
   
   string public jobID_CertusOne = "9e1a18406f99431a816059272738a633";
   string public jobID_Chainlayer = "1a7c545910574ecfa98266c8c33a7228";
