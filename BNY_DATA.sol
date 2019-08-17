@@ -647,6 +647,28 @@ library SafeMath {
 }
 
 // File: contracts/ChainlinkClient.sol
+pragma solidity 0.4.24;
+
+library SignedSafeMath {
+
+  /**
+   * @dev Adds two int256s and makes sure the result doesn't overflow. Signed 
+   * integers aren't supported by the SafeMath library, thus this method
+   * @param _a The first number to be added
+   * @param _a The second number to be added
+   */
+  function add(int256 _a, int256 _b)
+    internal
+    pure
+    returns (int256)
+  {
+    // solium-disable-next-line zeppelin/no-arithmetic-operations
+    int256 c = _a + _b;
+    require((_b >= 0 && c >= _a) || (_b < 0 && c < _a), "SignedSafeMath: addition overflow");
+
+    return c;
+  }
+}
 
 pragma solidity 0.4.24;
 
@@ -996,90 +1018,362 @@ pragma solidity 0.4.24;
 
 
 
-contract BNY_DATA is ChainlinkClient, Ownable {
-  uint256 constant private ORACLE_PAYMENT = 1 * LINK; // solium-disable-line zeppelin/no-arithmetic-operations
+/**
+ * @title An example Chainlink contract with aggregation
+ * @notice Requesters can use this contract as a framework for creating
+ * requests to multiple Chainlink nodes and running aggregation
+ * as the contract receives answers.
+ */
+contract Aggregator is ChainlinkClient, Ownable {
+  using SignedSafeMath for int256;
 
-  uint256 public currentPrice;
-
-
-  address public oracleAddress_Chainlink = 	0xc99B3D447826532722E41bc36e644ba3479E4365;
-  address public oracleAddress_CertusOne = 	0xA3Ce768F041d136E8d57fD24372E5fB510b797ec;
-  address public oracleAddress_Chainlayer =	0x6E6F16B7C0A00A2aC1136b3aE3E4641f1FAF8D7f;
-  address public oracleAddress_Fiews = 	0x1948C20CC492539968BB9b041F96D6556B4b7001;
-  address public oracleAddress_honeycombMarket =	0x4a3FBbB385b5eFEB4BC84a25AaADcD644Bd09721;
-  address public oracleAddress_LinkForestIo = 	0x4105d850E9Aea215f9350C9E46Bb73FC0448C20a;
-  address public oracleAddress_LinkPool = 0x83F00b902cbf06E316C95F51cbEeD9D2572a349a;
-  address public oracleAddress_SecureDataLinks = 	0xa0BfFBdf2c440D6c76af13c30d9B320F9d2DeA6A;
-  
-  string public jobID_CertusOne = "9e1a18406f99431a816059272738a633";
-  string public jobID_Chainlayer = "1a7c545910574ecfa98266c8c33a7228";
-  string public jobID_Chainlink = "be4c8c82435c41a8a5aef6e6f98f0fe9";
-  string public jobID_Fiews = "d0a996e4accd4796a2bcc418a6056012";
-  string public jobID_honeycombMarket = "95b18d82fc914520848713beb5512ddd";
-  string public jobID_LinkForestIo = "02cc13d61ca840cbbc2225f341db6c37";
-  string public jobID_LinkPool = "7e94057a9b4041bba0e2406398df8593";
-  string public jobID_SecureDataLinks = "a0ea97f6bc19480fa069f7ca8e4c5ee7";
-  
-
-  event RequestEthereumPriceFulfilled(
-    bytes32 indexed requestId,
-    uint256 indexed price
-  );
-
-  event RequestEthereumChangeFulfilled(
-    bytes32 indexed requestId,
-    int256 indexed change
-  );
-
-  event RequestEthereumLastMarket(
-    bytes32 indexed requestId,
-    bytes32 indexed market
-  );
-
-  constructor() Ownable() public {
-    setPublicChainlinkToken();
+  struct Answer {
+    uint128 minimumResponses;
+    uint128 maxResponses;
+    int256[] responses;
   }
 
-  function requestEthereumPrice(address _oracle, string _jobId)
-    public
-    onlyOwner
-  {   
-    Chainlink.Request memory req = buildChainlinkRequest(stringToBytes32(_jobId), this, this.fulfillEthereumPrice.selector);
-    req.add("url", "https://api.binance.com/api/v1/ticker/24hr?symbol=BNBBTC");
-    req.add("path", "lastPrice");
-    req.addInt("times", 1000000000);
-    sendChainlinkRequestTo(_oracle, req, ORACLE_PAYMENT);
-  }
-  
+  event ResponseReceived(int256 indexed response, uint256 indexed answerId, address indexed sender);
+  event AnswerUpdated(int256 indexed current, uint256 indexed answerId);
 
-  function fulfillEthereumPrice(bytes32 _requestId, uint256 _price)
+  int256 public currentAnswer;
+  uint256 public latestCompletedAnswer;
+  uint256 public updatedHeight;
+  uint128 public paymentAmount;
+  uint128 public minimumResponses;
+  bytes32[] public jobIds;
+  address[] public oracles;
+
+  uint256 private answerCounter = 1;
+  mapping(address => bool) public authorizedRequesters;
+  mapping(bytes32 => uint256) private requestAnswers;
+  mapping(uint256 => Answer) private answers;
+
+  uint256 constant private MAX_ORACLE_COUNT = 45;
+
+  /**
+   * @notice Deploy with the address of the LINK token and arrays of matching
+   * length containing the addresses of the oracles and their corresponding
+   * Job IDs.
+   * @dev Sets the LinkToken address for the network, addresses of the oracles,
+   * and jobIds in storage.
+   * @param _link The address of the LINK token
+   * @param _paymentAmount the amount of LINK to be sent to each oracle for each request
+   * @param _minimumResponses the minimum number of responses
+   * before an answer will be calculated
+   * @param _oracles An array of oracle addresses
+   * @param _jobIds An array of Job IDs
+   */
+  constructor(
+    address _link,
+    uint128 _paymentAmount,
+    uint128 _minimumResponses,
+    address[] _oracles,
+    bytes32[] _jobIds
+  )
     public
-    recordChainlinkFulfillment(_requestId)
+    Ownable()
   {
-    emit RequestEthereumPriceFulfilled(_requestId, _price);
-    currentPrice = _price;
+    setChainlinkToken(_link);
+    updateRequestDetails(_paymentAmount, _minimumResponses, _oracles, _jobIds);
   }
 
-  
+  /**
+   * @notice Creates a Chainlink request for each oracle in the oracles array.
+   * @dev This example does not include request parameters. Reference any documentation
+   * associated with the Job IDs used to determine the required parameters per-request.
+   */
+  function requestRateUpdate()
+    external
+    ensureAuthorizedRequester()
+  {
+    Chainlink.Request memory request;
+    bytes32 requestId;
+    uint256 oraclePayment = paymentAmount;
 
-  function getChainlinkToken() public view returns (address) {
-    return chainlinkTokenAddress();
+    for (uint i = 0; i < oracles.length; i++) {
+      request = buildChainlinkRequest(jobIds[i], this, this.chainlinkCallback.selector);
+      request.add("url", "https://api.binance.com/api/v1/ticker/24hr?symbol=BNBBTC");
+      request.add("path", "lastPrice");
+      request.addInt("times", 1000000000);
+      requestId = sendChainlinkRequestTo(oracles[i], request, oraclePayment);
+      requestAnswers[requestId] = answerCounter;
+    }
+    answers[answerCounter].minimumResponses = minimumResponses;
+    answers[answerCounter].maxResponses = uint128(oracles.length);
+    answerCounter = answerCounter.add(1);
   }
 
-  function withdrawLink() public onlyOwner {
+  /**
+   * @notice Receives the answer from the Chainlink node.
+   * @dev This function can only be called by the oracle that received the request.
+   * @param _clRequestId The Chainlink request ID associated with the answer
+   * @param _response The answer provided by the Chainlink node
+   */
+  function chainlinkCallback(bytes32 _clRequestId, int256 _response)
+    external
+  {
+    validateChainlinkCallback(_clRequestId);
+
+    uint256 answerId = requestAnswers[_clRequestId];
+    delete requestAnswers[_clRequestId];
+
+    answers[answerId].responses.push(_response);
+    emit ResponseReceived(_response, answerId, msg.sender);
+    updateLatestAnswer(answerId);
+    deleteAnswer(answerId);
+  }
+
+  /**
+   * @notice Updates the arrays of oracles and jobIds with new values,
+   * overwriting the old values.
+   * @dev Arrays are validated to be equal length.
+   * @param _paymentAmount the amount of LINK to be sent to each oracle for each request
+   * @param _minimumResponses the minimum number of responses
+   * before an answer will be calculated
+   * @param _oracles An array of oracle addresses
+   * @param _jobIds An array of Job IDs
+   */
+  function updateRequestDetails(
+    uint128 _paymentAmount,
+    uint128 _minimumResponses,
+    address[] _oracles,
+    bytes32[] _jobIds
+  )
+    public
+    onlyOwner()
+    validateAnswerRequirements(_minimumResponses, _oracles, _jobIds)
+  {
+    paymentAmount = _paymentAmount;
+    minimumResponses = _minimumResponses;
+    jobIds = _jobIds;
+    oracles = _oracles;
+  }
+
+  /**
+   * @notice Allows the owner of the contract to withdraw any LINK balance
+   * available on the contract.
+   * @dev The contract will need to have a LINK balance in order to create requests.
+   * @param _recipient The address to receive the LINK tokens
+   * @param _amount The amount of LINK to send from the contract
+   */
+  function transferLINK(address _recipient, uint256 _amount)
+    public
+    onlyOwner()
+  {
     LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
-    require(link.transfer(msg.sender, link.balanceOf(address(this))), "Unable to transfer");
+    require(link.transfer(_recipient, _amount), "LINK transfer failed");
   }
 
-  function stringToBytes32(string memory source) private pure returns (bytes32 result) {
-    bytes memory tempEmptyStringTest = bytes(source);
-    if (tempEmptyStringTest.length == 0) {
-      return 0x0;
-    }
+  /**
+   * @notice Called by the owner to permission other addresses to generate new
+   * requests to oracles.
+   * @param _requester the address whose permissions are being set
+   * @param _allowed boolean that determines whether the requester is
+   * permissioned or not
+   */
+  function setAuthorization(address _requester, bool _allowed)
+    external
+    onlyOwner()
+  {
+    authorizedRequesters[_requester] = _allowed;
+  }
 
-    assembly {
-      result := mload(add(source, 32))
+  /**
+   * @notice Cancels an outstanding Chainlink request.
+   * The oracle contract requires the request ID and additional metadata to
+   * validate the cancellation. Only old answers can be cancelled.
+   * @param _requestId is the identifier for the chainlink request being cancelled
+   * @param _payment is the amount of LINK paid to the oracle for the request
+   * @param _expiration is the time when the request expires
+   */
+  function cancelRequest(
+    bytes32 _requestId,
+    uint256 _payment,
+    uint256 _expiration
+  )
+    external
+    ensureAuthorizedRequester()
+  {
+    uint256 answerId = requestAnswers[_requestId];
+    require(answerId < latestCompletedAnswer, "Cannot modify an in-progress answer");
+
+    cancelChainlinkRequest(
+      _requestId,
+      _payment,
+      this.chainlinkCallback.selector,
+      _expiration
+    );
+
+    delete requestAnswers[_requestId];
+    answers[answerId].responses.push(0);
+    deleteAnswer(answerId);
+  }
+
+  /**
+   * @notice Called by the owner to kill the contract. This transfers all LINK
+   * balance and ETH balance (if there is any) to the owner.
+   */
+  function destroy()
+    external
+    onlyOwner()
+  {
+    LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
+    transferLINK(owner, link.balanceOf(address(this)));
+    selfdestruct(owner);
+  }
+
+  /**
+   * @dev Performs aggregation of the answers received from the Chainlink nodes.
+   * Assumes that at least half the oracles are honest and so can't contol the
+   * middle of the ordered responses.
+   * @param _answerId The answer ID associated with the group of requests
+   */
+  function updateLatestAnswer(uint256 _answerId)
+    private
+    ensureMinResponsesReceived(_answerId)
+    ensureOnlyLatestAnswer(_answerId)
+  {
+    uint256 responseLength = answers[_answerId].responses.length;
+    uint256 middleIndex = responseLength.div(2);
+    if (responseLength % 2 == 0) {
+      int256 median1 = quickselect(answers[_answerId].responses, middleIndex);
+      int256 median2 = quickselect(answers[_answerId].responses, middleIndex.add(1)); // quickselect is 1 indexed
+      // solium-disable-next-line zeppelin/no-arithmetic-operations
+      currentAnswer = median1.add(median2) / 2; // signed integers are not supported by SafeMath
+    } else {
+      currentAnswer = quickselect(answers[_answerId].responses, middleIndex.add(1)); // quickselect is 1 indexed
     }
+    latestCompletedAnswer = _answerId;
+    updatedHeight = block.number;
+    emit AnswerUpdated(currentAnswer, _answerId);
+  }
+
+  /**
+   * @dev Returns the kth value of the ordered array
+   * See: http://www.cs.yale.edu/homes/aspnes/pinewiki/QuickSelect.html
+   * @param _a The list of elements to pull from
+   * @param _k The index, 1 based, of the elements you want to pull from when ordered
+   */
+  function quickselect(int256[] memory _a, uint256 _k)
+    private
+    pure
+    returns (int256)
+  {
+    int256[] memory a = _a;
+    uint256 k = _k;
+    uint256 aLen = a.length;
+    int256[] memory a1 = new int256[](aLen);
+    int256[] memory a2 = new int256[](aLen);
+    uint256 a1Len;
+    uint256 a2Len;
+    int256 pivot;
+    uint256 i;
+
+    while (true) {
+      pivot = a[aLen.div(2)];
+      a1Len = 0;
+      a2Len = 0;
+      for (i = 0; i < aLen; i++) {
+        if (a[i] < pivot) {
+          a1[a1Len] = a[i];
+          a1Len++;
+        } else if (a[i] > pivot) {
+          a2[a2Len] = a[i];
+          a2Len++;
+        }
+      }
+      if (k <= a1Len) {
+        aLen = a1Len;
+        (a, a1) = swap(a, a1);
+      } else if (k > (aLen.sub(a2Len))) {
+        k = k.sub(aLen.sub(a2Len));
+        aLen = a2Len;
+        (a, a2) = swap(a, a2);
+      } else {
+        return pivot;
+      }
+    }
+  }
+
+  /**
+   * @dev Swaps the pointers to two uint256 arrays in memory
+   * @param _a The pointer to the first in memory array
+   * @param _b The pointer to the second in memory array
+   */
+  function swap(int256[] memory _a, int256[] memory _b)
+    private
+    pure
+    returns(int256[] memory, int256[] memory)
+  {
+    return (_b, _a);
+  }
+
+  /**
+   * @dev Cleans up the answer record if all responses have been received.
+   * @param _answerId The identifier of the answer to be deleted
+   */
+  function deleteAnswer(uint256 _answerId)
+    private
+    ensureAllResponsesReceived(_answerId)
+  {
+    delete answers[_answerId];
+  }
+
+  /**
+   * @dev Prevents taking an action if the minimum number of responses has not
+   * been received for an answer.
+   * @param _answerId The the identifier of the answer that keeps track of the responses.
+   */
+  modifier ensureMinResponsesReceived(uint256 _answerId) {
+    if (answers[_answerId].responses.length >= answers[_answerId].minimumResponses) {
+      _;
+    }
+  }
+
+  /**
+   * @dev Prevents taking an action if not all responses are received for an answer.
+   * @param _answerId The the identifier of the answer that keeps track of the responses.
+   */
+  modifier ensureAllResponsesReceived(uint256 _answerId) {
+    if (answers[_answerId].responses.length == answers[_answerId].maxResponses) {
+      _;
+    }
+  }
+
+  /**
+   * @dev Prevents taking an action if a newer answer has been recorded.
+   * @param _answerId The current answer's identifier.
+   * Answer IDs are in ascending order.
+   */
+  modifier ensureOnlyLatestAnswer(uint256 _answerId) {
+    if (latestCompletedAnswer <= _answerId) {
+      _;
+    }
+  }
+
+  /**
+   * @dev Ensures corresponding number of oracles and jobs.
+   * @param _oracles The list of oracles.
+   * @param _jobIds The list of jobs.
+   */
+  modifier validateAnswerRequirements(
+    uint256 _minimumResponses,
+    address[] _oracles,
+    bytes32[] _jobIds
+  ) {
+    require(_oracles.length <= MAX_ORACLE_COUNT, "cannot have more than 45 oracles");
+    require(_oracles.length >= _minimumResponses, "must have at least as many oracles as responses");
+    require(_oracles.length == _jobIds.length, "must have exactly as many oracles as job IDs");
+    _;
+  }
+
+  /**
+   * @dev Reverts if `msg.sender` is not authorized to make requests.
+   */
+  modifier ensureAuthorizedRequester() {
+    require(authorizedRequesters[msg.sender] || msg.sender == owner, "Not an authorized address for creating requests");
+    _;
   }
 
 }
