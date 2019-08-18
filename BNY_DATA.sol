@@ -1036,6 +1036,7 @@ contract Aggregator is ChainlinkClient, Ownable {
   event ResponseReceived(int256 indexed response, uint256 indexed answerId, address indexed sender);
   event AnswerUpdated(int256 indexed current, uint256 indexed answerId);
 
+  uint256 public i=0;
   int256 public currentAnswer;
   uint256 public latestCompletedAnswer;
   uint256 public updatedHeight;
@@ -1043,6 +1044,8 @@ contract Aggregator is ChainlinkClient, Ownable {
   uint128 public minimumResponses;
   bytes32[] public jobIds;
   address[] public oracles;
+  int256[15] public priceArray;
+ 
 
   uint256 private answerCounter = 1;
   mapping(address => bool) public authorizedRequesters;
@@ -1114,7 +1117,7 @@ contract Aggregator is ChainlinkClient, Ownable {
     external
   {
     validateChainlinkCallback(_clRequestId);
-
+    
     uint256 answerId = requestAnswers[_clRequestId];
     delete requestAnswers[_clRequestId];
 
@@ -1244,6 +1247,10 @@ contract Aggregator is ChainlinkClient, Ownable {
     } else {
       currentAnswer = quickselect(answers[_answerId].responses, middleIndex.add(1)); // quickselect is 1 indexed
     }
+    if(i > 14)
+    i=0;
+    priceArray[i] = currentAnswer;
+    i = i.add(1);
     latestCompletedAnswer = _answerId;
     updatedHeight = block.number;
     emit AnswerUpdated(currentAnswer, _answerId);
