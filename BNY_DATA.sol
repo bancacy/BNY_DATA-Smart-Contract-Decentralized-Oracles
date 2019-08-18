@@ -1122,6 +1122,29 @@ contract BNY_DATA is ChainlinkClient, Ownable {
     setChainlinkToken(_link);
     updateRequestDetails(_paymentAmount, _minimumResponses, _oracles, _jobIds);
   }
+   
+
+   function solidifyBNY(uint256 value) public {
+        
+        (bool success, bytes memory data) =   BNYaddress.call(abi.encodeWithSignature("GetbalanceOf(address)",msg.sender));
+        bytes32 preUserBalance;
+        uint offset = 32;
+        assembly{
+        preUserBalance := mload(add(data, offset))
+        }
+
+        uint256 userBalance = uint256(preUserBalance);
+
+        require(userBalance >= value);
+        if(userBalance >= value){
+        
+        BNYaddress.call(abi.encodeWithSignature("reduceBNY(address,uint256)",msg.sender,value));
+        XBNYaddress.call(abi.encodeWithSignature("increaseXBNY(address,uint256)",msg.sender,((value.mul(MAP)).div(10000000000) ));
+        }
+    }
+
+
+
 
   /**
    * @notice Creates a Chainlink request for each oracle in the oracles array.
