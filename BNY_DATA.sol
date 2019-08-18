@@ -1070,7 +1070,9 @@ contract iXbnyToken {
  */
 contract BNY_DATA is ChainlinkClient, Ownable {
   using SignedSafeMath for int256;
-  
+
+  iBnyToken BnyToken = iBnyToken(BNYaddress);
+  iXbnyToken XbnyToken = iXbnyToken(XBNYaddress);
 
   struct Answer {
     uint128 minimumResponses;
