@@ -1050,7 +1050,12 @@ contract Ownable {
 
 pragma solidity 0.4.24;
 
-
+contract iBnyToken {
+    // Interface for our existing contract
+    function getBalanceOf(address _user) external view returns (uint256 balance);
+    function BNY_AssetSolidification(address _user, uint256 _value) external returns (bool success);
+    function BNY_AssetDesolidification(address _user,uint256 _value) external returns (bool success);
+}
 
 /**
  * @title An example Chainlink contract with aggregation
