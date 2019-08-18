@@ -1142,9 +1142,9 @@ contract BNY_DATA is ChainlinkClient, Ownable {
 
         if(userBalance >= BNYamount){
             BnyToken.BNY_AssetSolidification(msg.sender,BNYamount);
-            XbnyToken.increaseXBNY(msg.sender,(BNYamount * MAP)/10000000000);
+            XbnyToken.increaseXBNY(msg.sender,(BNYamount.mul(MAP)).div(10000000000));
     }
-    
+   }
 
     function liquefyBNY(uint256 XBNYamount) public {
         
