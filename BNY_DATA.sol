@@ -1084,6 +1084,8 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   address[] public oracles;
   int256[3] public priceArray;
   int256 priceArraySize = 3;
+  address public BNYaddress;
+  address public XBNYaddress;
 
   uint256 private answerCounter = 1;
   mapping(address => bool) public authorizedRequesters;
@@ -1110,7 +1112,9 @@ contract BNY_DATA is ChainlinkClient, Ownable {
     uint128 _paymentAmount,
     uint128 _minimumResponses,
     address[] _oracles,
-    bytes32[] _jobIds
+    bytes32[] _jobIds,
+    address[] BNYaddress,
+    address[] XBNYaddress
   )
     public
     Ownable()
