@@ -650,24 +650,28 @@ library SafeMath {
 pragma solidity 0.4.24;
 
 library SignedSafeMath {
+    int256 constant private INT256_MIN = -2**255;
 
-  /**
-   * @dev Adds two int256s and makes sure the result doesn't overflow. Signed 
-   * integers aren't supported by the SafeMath library, thus this method
-   * @param _a The first number to be added
-   * @param _a The second number to be added
-   */
-  function add(int256 _a, int256 _b)
-    internal
-    pure
-    returns (int256)
-  {
-    // solium-disable-next-line zeppelin/no-arithmetic-operations
-    int256 c = _a + _b;
-    require((_b >= 0 && c >= _a) || (_b < 0 && c < _a), "SignedSafeMath: addition overflow");
+    /**
+     * @dev Multiplies two signed integers, reverts on overflow.
+     */
+    function mul(int256 a, int256 b) internal pure returns (int256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
 
-    return c;
-  }
+        require(!(a == -1 && b == INT256_MIN), "SignedSafeMath: multiplication overflow");
+
+        int256 c = a * b;
+        require(c / a == b, "SignedSafeMath: multiplication overflow");
+
+        return c;
+    }
+
+   
 }
 
 pragma solidity 0.4.24;
@@ -1024,8 +1028,9 @@ pragma solidity 0.4.24;
  * requests to multiple Chainlink nodes and running aggregation
  * as the contract receives answers.
  */
-contract Aggregator is ChainlinkClient, Ownable {
+contract BNY_DATA is ChainlinkClient, Ownable {
   using SignedSafeMath for int256;
+  
 
   struct Answer {
     uint128 minimumResponses;
@@ -1035,17 +1040,20 @@ contract Aggregator is ChainlinkClient, Ownable {
 
   event ResponseReceived(int256 indexed response, uint256 indexed answerId, address indexed sender);
   event AnswerUpdated(int256 indexed current, uint256 indexed answerId);
-
-  uint256 public i=0;
+   
+  bool public firstTime = true;
+  uint256 public i = 0;
   int256 public currentAnswer;
+  int256 public MAP;
+  int256 public prevArraySum;
   uint256 public latestCompletedAnswer;
   uint256 public updatedHeight;
   uint128 public paymentAmount;
   uint128 public minimumResponses;
   bytes32[] public jobIds;
   address[] public oracles;
-  int256[15] public priceArray;
- 
+  int256[3] public priceArray;
+  int256 priceArraySize = 3;
 
   uint256 private answerCounter = 1;
   mapping(address => bool) public authorizedRequesters;
@@ -1247,14 +1255,43 @@ contract Aggregator is ChainlinkClient, Ownable {
     } else {
       currentAnswer = quickselect(answers[_answerId].responses, middleIndex.add(1)); // quickselect is 1 indexed
     }
-    if(i > 14)
-    i=0;
+
+    
+    if(i > 2)
+    i = 0;
+    if(prevArraySum != 0)
+    {
+    prevArraySum = (prevArraySum.sub(priceArray[i])).add(currentAnswer);
+    MAP = prevArraySum.div(priceArraySize);
+    }
     priceArray[i] = currentAnswer;
+    
     i = i.add(1);
+    if(firstTime && priceArray[2] != 0)
+    {
+     prevArraySum = sumArray(priceArray);
+     MAP = prevArraySum.div(priceArraySize);
+     firstTime = false;
+    } 
     latestCompletedAnswer = _answerId;
     updatedHeight = block.number;
     emit AnswerUpdated(currentAnswer, _answerId);
   }
+  
+   function sumArray(int256[3] memory A)
+     private
+     pure
+     returns (int256)
+  {
+    uint256 i;
+    int256 sum=0;
+    for(i=0; i < 3 ; i++)
+    {
+     sum = sum.add(A[1]);
+    }
+    return(sum);
+  }
+   
 
   /**
    * @dev Returns the kth value of the ordered array
