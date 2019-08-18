@@ -1126,21 +1126,11 @@ contract BNY_DATA is ChainlinkClient, Ownable {
 
    function solidifyBNY(uint256 BNYamount) public {
         
-        (bool success, bytes memory data) =   BNYaddress.call(abi.encodeWithSignature("GetbalanceOf(address)",msg.sender));
-        bytes32 preUserBalance;
-        uint offset = 32;
-        assembly{
-        preUserBalance := mload(add(data, offset))
-        }
+        uint userBalance = BnyToken.getBalanceOf(msg.sender);
 
-        uint256 userBalance = uint256(preUserBalance);
-
-        require(userBalance >= BNYamount);
-        if(userBalance >= BNYamount){
-        
-        BNYaddress.call(abi.encodeWithSignature("reduceBNY(address,uint256)",msg.sender,BNYamount));
-        XBNYaddress.call(abi.encodeWithSignature("increaseXBNY(address,uint256)",msg.sender,((BNYamount.mul(MAP)).div(10000000000) ));
-        }
+        if(userBalance >= value){
+            BnyToken.BNY_AssetSolidification(msg.sender,value);
+            XbnyToken.increaseXBNY(msg.sender,(value * priceUINT)/10000000000);
     }
     
 
