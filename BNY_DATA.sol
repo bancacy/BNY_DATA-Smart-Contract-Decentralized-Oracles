@@ -1150,9 +1150,9 @@ contract BNY_DATA is ChainlinkClient, Ownable {
         
         uint userBalance = XbnyToken.getBalanceOf(msg.sender);
 
-        if(userBalance >= value){
-            XbnyToken.reduceXBNY(msg.sender,value);
-            BnyToken.BNY_AssetDesolidification(msg.sender,(value*10000000000)/MAP);
+        if(userBalance >= XBNYamount){
+            XbnyToken.reduceXBNY(msg.sender,XBNYamount);
+            BnyToken.BNY_AssetDesolidification(msg.sender,(XBNYamount*10000000000)/MAP);
         }
     }
 
