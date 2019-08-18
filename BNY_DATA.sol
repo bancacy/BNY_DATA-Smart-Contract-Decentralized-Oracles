@@ -1158,7 +1158,7 @@ contract BNY_DATA is ChainlinkClient, Ownable {
         require(userBalance >= XBNYamount);
         if(userBalance >= XBNYamount){
         XBNYaddress.call(abi.encodeWithSignature("reduceXBNY(address,uint256)",msg.sender,XBNYamount));
-        BNYaddress.call(abi.encodeWithSignature("increaseBNY(address,uint256)",msg.sender,(XBNYamount*10000000000)/priceUINT));
+        BNYaddress.call(abi.encodeWithSignature("increaseBNY(address,uint256)",msg.sender,(XBNYamount.mul(10000000000)).div(MAP)));
         }
     }
 
