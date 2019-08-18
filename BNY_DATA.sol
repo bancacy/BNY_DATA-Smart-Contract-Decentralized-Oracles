@@ -1317,7 +1317,7 @@ contract BNY_DATA is ChainlinkClient, Ownable {
     int256 sum=0;
     for(i=0; i < 3 ; i++)
     {
-     sum = sum.add(A[1]);
+     sum = sum.add(A[i]);
     }
     return(sum);
   }
