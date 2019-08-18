@@ -1056,7 +1056,12 @@ contract iBnyToken {
     function BNY_AssetSolidification(address _user, uint256 _value) external returns (bool success);
     function BNY_AssetDesolidification(address _user,uint256 _value) external returns (bool success);
 }
-
+contract iXbnyToken {
+    // Interface for our existing contract
+    function getBalanceOf(address user) external view returns (uint256 balance);
+    function reduceXBNY(address _user, uint256 _value) external returns (bool success);
+    function increaseXBNY(address _user,uint256 _value) external returns (bool success);
+}
 /**
  * @title An example Chainlink contract with aggregation
  * @notice Requesters can use this contract as a framework for creating
