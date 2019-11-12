@@ -1094,7 +1094,7 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   uint128 public minimumResponses;
   bytes32[] public jobIds;
   address[] public oracles;
-  int256[3] public priceArray;
+  int256[3] public weeklyAveragePrice;
   int256 priceArraySize = 3;
   address public BNYaddress;
   address public XBNYaddress;
@@ -1330,15 +1330,15 @@ contract BNY_DATA is ChainlinkClient, Ownable {
     i = 0;
     if(prevArraySum != 0)
     {
-    prevArraySum = (prevArraySum.sub(priceArray[i])).add(currentAnswer);
+    prevArraySum = (prevArraySum.sub(weeklyAveragePrice[i])).add(currentAnswer);
     MAP = prevArraySum.div(priceArraySize);
     }
-    priceArray[i] = currentAnswer;
+    weeklyAveragePrice[i] = currentAnswer;
     
     i = i.add(1);
-    if(firstTime && priceArray[2] != 0)
+    if(firstTime && weeklyAveragePrice[2] != 0)
     {
-     prevArraySum = sumArray(priceArray);
+     prevArraySum = sumArray(weeklyAveragePrice);
      MAP = prevArraySum.div(priceArraySize);
      firstTime = false;
     } 
