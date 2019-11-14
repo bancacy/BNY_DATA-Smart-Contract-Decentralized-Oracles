@@ -1094,8 +1094,8 @@ contract BNY_DATA is ChainlinkClient, Ownable {
   uint128 public minimumResponses;
   bytes32[] public jobIds;
   address[] public oracles;
-  int256[3] public weeklyAveragePrice;
-  int256 priceArraySize = 3;
+  int256[7] public weeklyAveragePrice;
+  int256 priceArraySize = 7;
   address public BNYaddress;
   address public XBNYaddress;
 
